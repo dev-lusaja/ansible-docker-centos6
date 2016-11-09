@@ -1,0 +1,49 @@
+---
+- name: Update Kernel Version
+  yum: name={{ item }} state=present
+  with_items:
+  - kernel-devel
+  - kernel-headers
+  - dkms
+  - gcc-c++
+  - epel-release
+
+- name: Add Docker repo
+  copy: src=docker.repo dest=/etc/yum.repos.d/docker.repo
+
+- name: Add Docker repository key
+  rpm_key: key=https://apt.dockerproject.org/gpg state=present validate_certs=no
+
+- name: Remove Docker
+  yum: name=docker* state=absent
+
+- name: Install Docker Engine
+  yum: name=docker-engine state=present
+
+- name: Import EPEL GPG Key
+  rpm_key: key="/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-6" state=present
+
+- name: Move User docker to user group
+  user: name=docker append=yes groups=root
+
+- name: Move User docker to user group
+  user: name=docker append=yes groups={{ host_user }}
+
+- name: Check config Docker
+  command: chkconfig docker on
+
+- name: Start Docker Service
+  service: name=docker state=started
+
+- name: Install Docker Compose
+  shell: curl -L https://github.com/docker/compose/releases/download/1.4.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+
+- name: Change permissions Docker Compose folder
+  file: path=/usr/local/bin/docker-compose mode=0755
+
+- name: Config docker commands without sudo
+  shell: gpasswd -a {{ host_user }} docker
+  sudo: true
+
+- name: Restart Docker Service
+  service: name=docker state=restarted
